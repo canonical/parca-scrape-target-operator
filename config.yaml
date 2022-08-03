@@ -3,7 +3,3 @@ options:
     description: Comma separated list of external scrape targets, e.g., "192.168.5.2:7000,192.168.5.3:7000"; do not add the protocol!
     type: string
     default: ""
-  job_name:
-    description: Name of external scrape configuration jobs.
-    type: string
-    default: "external_jobs"
