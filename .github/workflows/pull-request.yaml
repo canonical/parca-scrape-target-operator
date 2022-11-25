@@ -1,6 +1,17 @@
 name: Tests
 on:
-  pull_request: {}
+  pull_request:
+    paths-ignore:
+      - ".github/renovate*"
+      - ".github/workflows/release.yaml"
+      - ".github/workflows/renovate.yaml"
+      - ".github/workflows/update-libs.yaml"
+      - ".github/workflows/update-parca.yaml"
+      - ".gitignore"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
