@@ -20,6 +20,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
             await charm_under_test,
             application_name=PARCA_TARGET,
             config={"targets": "10.10.10.10:7070"},
+            series="jammy",
         ),
         ops_test.model.wait_for_idle(
             apps=[PARCA_TARGET], status="active", raise_on_blocked=True, timeout=1000
