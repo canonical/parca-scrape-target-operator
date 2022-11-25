@@ -5,10 +5,9 @@ import json
 import unittest
 
 import ops
+from charm import ParcaScrapeTargetCharm
 from ops.model import ActiveStatus, BlockedStatus
 from ops.testing import Harness
-
-from charm import ParcaScrapeTargetCharm
 
 ops.testing.SIMULATE_CAN_CONNECT = True
 
