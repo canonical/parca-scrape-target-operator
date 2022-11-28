@@ -8,6 +8,9 @@ on:
       - ".github/workflows/update-libs.yaml"
       - ".github/workflows/update-parca.yaml"
       - ".gitignore"
+    push:
+      branches:
+        - "renovate/*"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
