@@ -45,7 +45,7 @@ class ParcaScrapeTargetCharm(CharmBase):
 
     @property
     def _get_scrape_jobs(self) -> list:
-        """Setup Parca scrape configuration for external targets."""
+        """Set up Parca scrape configuration for external targets."""
         if targets := self._targets:
             return [{"static_configs": [{"targets": targets}]}]
         else:
