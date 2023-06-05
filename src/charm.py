@@ -8,15 +8,13 @@ import json
 import logging
 from urllib.parse import urlparse
 
+import ops
 from charms.observability_libs.v0.juju_topology import JujuTopology
-from ops.charm import CharmBase
-from ops.main import main
-from ops.model import ActiveStatus, BlockedStatus
 
 logger = logging.getLogger(__name__)
 
 
-class ParcaScrapeTargetCharm(CharmBase):
+class ParcaScrapeTargetCharm(ops.CharmBase):
     """Parca Scrape Target Charm."""
 
     def __init__(self, *args):
@@ -33,11 +31,11 @@ class ParcaScrapeTargetCharm(CharmBase):
         """Update relation data with scrape jobs."""
         if not (jobs := self._get_scrape_jobs):
             scrape_meta = scrape_jobs = ""
-            self.unit.status = BlockedStatus("No targets specified, or targets invalid")
+            self.unit.status = ops.BlockedStatus("No targets specified, or targets invalid")
         else:
             scrape_meta = json.dumps(JujuTopology.from_charm(self).as_dict())
             scrape_jobs = json.dumps(jobs)
-            self.unit.status = ActiveStatus()
+            self.unit.status = ops.ActiveStatus()
 
         for relation in self.model.relations["profiling-endpoint"]:
             relation.data[self.app]["scrape_metadata"] = scrape_meta
@@ -103,4 +101,4 @@ class ParcaScrapeTargetCharm(CharmBase):
 
 
 if __name__ == "__main__":
-    main(ParcaScrapeTargetCharm)
+    ops.main(ParcaScrapeTargetCharm)
