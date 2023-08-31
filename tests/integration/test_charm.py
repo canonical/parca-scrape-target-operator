@@ -3,12 +3,8 @@
 
 import asyncio
 
-import requests
 from pytest import mark
 from pytest_operator.plugin import OpsTest
-from tenacity import retry
-from tenacity.stop import stop_after_attempt
-from tenacity.wait import wait_exponential as wexp
 
 PARCA_TARGET = "parca-scrape-target"
 
@@ -45,6 +41,7 @@ async def test_profiling_endpoint_relation(ops_test: OpsTest):
             timeout=1000,
         ),
     )
+
 
 # Commented until this is fixed: https://github.com/juju/python-libjuju/issues/925
 # @mark.abort_on_fail

@@ -33,9 +33,8 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
-        rel_id = self.harness.add_relation("profiling-endpoint", "parca")
+        rel_id = self.harness.add_relation("profiling-endpoint", "parca", unit_data={})
         relation_data = self.harness.get_relation_data(rel_id, self.harness.charm.app.name)
-        self.harness.add_relation_unit(rel_id, "parca/0")
 
         expected_jobs = [{"static_configs": [{"targets": ["foo:1234"]}]}]
         expected_meta = {
@@ -92,9 +91,8 @@ class TestCharm(unittest.TestCase):
 
         self.assertEqual(self.harness.model.unit.status, ActiveStatus())
 
-        rel_id = self.harness.add_relation("profiling-endpoint", "parca")
+        rel_id = self.harness.add_relation("profiling-endpoint", "parca", unit_data={})
         relation_data = self.harness.get_relation_data(rel_id, self.harness.charm.app.name)
-        self.harness.add_relation_unit(rel_id, "parca/0")
 
         expected_jobs = [{"static_configs": [{"targets": ["foo:1234"]}]}]
         expected_meta = {
