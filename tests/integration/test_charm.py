@@ -46,11 +46,11 @@ async def test_profiling_endpoint_relation(ops_test: OpsTest):
         ),
     )
 
-
-@mark.abort_on_fail
-@retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_attempt(10), reraise=True)
-async def test_profiling_relation_is_configured(ops_test: OpsTest):
-    status = await ops_test.model.get_status()  # noqa: F821
-    address = status["applications"]["parca-k8s"]["public-address"]
-    response = requests.get(f"http://{address}:7070/metrics")
-    assert "parca-scrape-target" in response.text
+# Commented until this is fixed: https://github.com/juju/python-libjuju/issues/925
+# @mark.abort_on_fail
+# @retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_attempt(10), reraise=True)
+# async def test_profiling_relation_is_configured(ops_test: OpsTest):
+#     status = await ops_test.model.get_status()  # noqa: F821
+#     address = status["applications"]["parca-k8s"]["public-address"]
+#     response = requests.get(f"http://{address}:7070/metrics")
+#     assert "parca-scrape-target" in response.text
