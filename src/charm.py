@@ -52,7 +52,7 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     @property
     def _targets(self) -> list:
         """Get a sanitised list of external scrape targets."""
-        if not (raw_targets := self.model.config.get("targets", "")):
+        if not (raw_targets := str(self.model.config.get("targets", ""))):
             return []
 
         targets = []
