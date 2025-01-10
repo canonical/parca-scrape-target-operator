@@ -6,7 +6,6 @@
 
 import json
 import logging
-from pathlib import Path
 from urllib.parse import urlparse
 
 import ops
@@ -16,12 +15,9 @@ from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer, cha
 
 logger = logging.getLogger(__name__)
 
-CA_CERT_PATH = Path("/usr/local/share/ca-certificates/ca.crt")
-
 
 @trace_charm(
     tracing_endpoint="charm_tracing_endpoint",
-    server_cert="server_cert",
 )
 class ParcaScrapeTargetCharm(ops.CharmBase):
     """Parca Scrape Target Charm."""
@@ -36,9 +32,9 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         self.charm_tracing = TracingEndpointRequirer(
             self, relation_name="charm-tracing", protocols=["otlp_http"]
         )
-        self.charm_tracing_endpoint, self.server_cert = charm_tracing_config(
-            self.charm_tracing, CA_CERT_PATH
-        )
+        # TODO: pass CA path once TLS support is added
+        # https://github.com/canonical/parca-scrape-target-operator/issues/57
+        self.charm_tracing_endpoint, _ = charm_tracing_config(self.charm_tracing, None)
 
         self.framework.observe(self.on.config_changed, self._update)
         self.framework.observe(self.on.profiling_endpoint_relation_changed, self._update)
