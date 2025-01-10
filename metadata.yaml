@@ -9,6 +9,13 @@ description: |
   The Parca scrape target operator allows profiling endpoints outside the
   Juju model to be profiled by the Parca and Parca Kubernetes charms.
 
+requires:
+  charm-tracing:
+    description: |
+      Enables sending charm traces to a distributed tracing backend such as Tempo.
+    limit: 1
+    interface: tracing
+
 provides:
   profiling-endpoint:
     interface: parca_scrape

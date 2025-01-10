@@ -6,14 +6,23 @@
 
 import json
 import logging
+from pathlib import Path
 from urllib.parse import urlparse
 
 import ops
 from charms.observability_libs.v0.juju_topology import JujuTopology
+from charms.tempo_coordinator_k8s.v0.charm_tracing import trace_charm
+from charms.tempo_coordinator_k8s.v0.tracing import TracingEndpointRequirer, charm_tracing_config
 
 logger = logging.getLogger(__name__)
 
+CA_CERT_PATH = Path("/usr/local/share/ca-certificates/ca.crt")
 
+
+@trace_charm(
+    tracing_endpoint="charm_tracing_endpoint",
+    server_cert="server_cert",
+)
 class ParcaScrapeTargetCharm(ops.CharmBase):
     """Parca Scrape Target Charm."""
 
@@ -23,9 +32,21 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         if not self.unit.is_leader():
             return
 
+        # Enable charm tracing
+        self.charm_tracing = TracingEndpointRequirer(
+            self, relation_name="charm-tracing", protocols=["otlp_http"]
+        )
+        self.charm_tracing_endpoint, self.server_cert = charm_tracing_config(
+            self.charm_tracing, CA_CERT_PATH
+        )
+
         self.framework.observe(self.on.config_changed, self._update)
         self.framework.observe(self.on.profiling_endpoint_relation_changed, self._update)
         self.framework.observe(self.on.profiling_endpoint_relation_joined, self._update)
+
+    ##########################
+    # === EVENT HANDLERS === #
+    ##########################
 
     def _update(self, _):
         """Update relation data with scrape jobs."""
@@ -40,6 +61,10 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         for relation in self.model.relations["profiling-endpoint"]:
             relation.data[self.app]["scrape_metadata"] = scrape_meta
             relation.data[self.app]["scrape_jobs"] = scrape_jobs
+
+    ##########################
+    # === PROPERTIES === #
+    ##########################
 
     @property
     def _get_scrape_jobs(self) -> list:
@@ -71,6 +96,10 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
             )
             return []
         return targets
+
+    ##########################
+    # === UTILITY METHODS === #
+    ##########################
 
     def _validated_address(self, address: str) -> str:
         """Validate address using urllib.parse.urlparse.
