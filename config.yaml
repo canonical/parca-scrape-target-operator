@@ -3,3 +3,23 @@ options:
     description: Comma separated list of external scrape targets, e.g., "192.168.5.2:7000,192.168.5.3:7000"; do not add the protocol!
     type: string
     default: ""
+  scheme:
+    type: string
+    description: >
+      Configures the protocol scheme that would be used for scraping the targets.
+  tls_config_ca:
+    type: string
+    description: >
+      CA certificate to validate the targets' server certificates with.
+      reference: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config
+  tls_config_insecure_skip_verify:
+    type: boolean
+    description: >
+      Disable server certificate validation for the targets.
+      reference: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config
+  tls_config_server_name:
+    type: string
+    description: >
+      Server name to verify the hostname of the targets. 
+      Only relevant if the target's cert does not include its name in the SANs.
+      reference: https://prometheus.io/docs/prometheus/latest/configuration/configuration/#tls_config

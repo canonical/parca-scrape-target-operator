@@ -6,10 +6,11 @@
 
 import json
 import logging
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 import ops
-from charms.observability_libs.v0.juju_topology import JujuTopology
+from cosl import JujuTopology
 
 logger = logging.getLogger(__name__)
 
@@ -20,34 +21,75 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
+        # event handlers
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
+
+        self._reconcile()
+
+    # EVENT HANDLERS
+    def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
+        """Set unit status depending on the state."""
+        if not self._targets:
+            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid"))
+        event.add_status(ops.ActiveStatus())
+
+    def _reconcile(self):
+        """Unconditional logic that can run on any event."""
         if not self.unit.is_leader():
             return
+        self._update_relations()
 
-        self.framework.observe(self.on.config_changed, self._update)
-        self.framework.observe(self.on.profiling_endpoint_relation_changed, self._update)
-        self.framework.observe(self.on.profiling_endpoint_relation_joined, self._update)
-
-    def _update(self, _):
+    def _update_relations(self):
         """Update relation data with scrape jobs."""
-        if not (jobs := self._get_scrape_jobs):
-            scrape_meta = scrape_jobs = ""
-            self.unit.status = ops.BlockedStatus("No targets specified, or targets invalid")
-        else:
-            scrape_meta = json.dumps(JujuTopology.from_charm(self).as_dict())
-            scrape_jobs = json.dumps(jobs)
-            self.unit.status = ops.ActiveStatus()
+        scrape_meta = json.dumps(self._scrape_meta) if self._scrape_meta else ""
+        scrape_jobs = json.dumps(self._scrape_jobs) if self._scrape_jobs else ""
 
         for relation in self.model.relations["profiling-endpoint"]:
             relation.data[self.app]["scrape_metadata"] = scrape_meta
             relation.data[self.app]["scrape_jobs"] = scrape_jobs
 
     @property
-    def _get_scrape_jobs(self) -> list:
+    def _scrape_meta(self) -> Optional[Dict[str, str]]:
+        """Set up Parca scrape meta for external targets."""
+        return JujuTopology.from_charm(self).as_dict() if self._scrape_jobs else None
+
+    @property
+    def _scrape_jobs(self) -> Optional[List]:
         """Set up Parca scrape configuration for external targets."""
-        if targets := self._targets:
-            return [{"static_configs": [{"targets": targets}]}]
-        else:
-            return []
+        # return None if no targets are configured
+        if not self._targets:
+            return None
+
+        job: Dict[str, Any] = {
+            "static_configs": [{"targets": self._targets}],
+        }
+        if self._scheme == "https":
+            job["scheme"] = "https"
+            job["tls_config"] = self._tls_config
+
+        return [job]
+
+    @property
+    def _tls_config(self) -> Dict[str, Any]:
+        """Get TLS config options from config data."""
+        ca = self.model.config.get("tls_config_ca", "")
+        server_name = self.model.config.get("tls_config_server_name", "")
+        skip_verify = self.model.config.get("tls_config_insecure_skip_verify", False)
+
+        tls_config = {
+            "insecure_skip_verify": skip_verify,
+        }
+        if ca:
+            tls_config["ca"] = ca
+        if server_name:
+            tls_config["server_name"] = server_name
+
+        return tls_config
+
+    @property
+    def _scheme(self) -> str:
+        """Get scheme option from config data."""
+        return str(self.model.config.get("scheme", ""))
 
     @property
     def _targets(self) -> list:
