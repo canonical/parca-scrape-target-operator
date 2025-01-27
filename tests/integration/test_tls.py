@@ -2,6 +2,7 @@
 # See LICENSE file for licensing details.
 
 import asyncio
+from subprocess import getoutput
 
 import requests
 from juju.application import Application
@@ -27,6 +28,13 @@ async def get_ca_cert(ops_test: OpsTest) -> str:
     return ca
 
 
+def get_unit_ip(model_name, app_name, unit_id):
+    """Return a juju unit's IP."""
+    return getoutput(
+        f"""juju status --model {model_name} --format json | jq '.applications.{app_name}.units."{app_name}/{unit_id}".address'"""
+    ).strip('"')
+
+
 @mark.abort_on_fail
 async def test_deploy(ops_test: OpsTest, charm_under_test):
     # Deploy
@@ -50,7 +58,6 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
 
     # Integrate with TLS
     await asyncio.gather(
-        ops_test.model.relate(PARCA, SSC),
         ops_test.model.relate(f"{GRAFANA}:certificates", SSC),
     )
 
@@ -65,8 +72,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
 
 @mark.abort_on_fail
 async def test_set_scrape_target_config(ops_test: OpsTest):
-    status = await ops_test.model.get_status()  # noqa: F821
-    grafana_address = status["applications"][GRAFANA]["public-address"]
+    grafana_address = get_unit_ip(ops_test.model_name, GRAFANA, "0")
     config = {
         "targets": f"{grafana_address}:8080",
         "scheme": "https",
@@ -92,4 +98,5 @@ async def test_profiling_is_configured(ops_test: OpsTest):
     status = await ops_test.model.get_status()  # noqa: F821
     address = status["applications"][PARCA]["public-address"]
     response = requests.get(f"https://{address}:8080/metrics", verify=False)
-    assert "grafana" in response.text
+    # the scrape job will contain the topology of parca-scrape-target not grafana
+    assert PARCA_TARGET in response.text
