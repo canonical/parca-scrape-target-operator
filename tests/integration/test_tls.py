@@ -51,7 +51,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
     # Integrate with TLS
     await asyncio.gather(
         ops_test.model.relate(PARCA, SSC),
-        ops_test.model.relate(GRAFANA, SSC),
+        ops_test.model.relate(f"{GRAFANA}:certificates", SSC),
     )
 
     # Wait for idle
