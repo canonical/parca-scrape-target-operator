@@ -32,7 +32,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
     # Deploy
     await asyncio.gather(
         ops_test.model.deploy(
-            charm_under_test,
+            await charm_under_test,
             application_name=PARCA_TARGET,
         ),
         ops_test.model.deploy(PARCA, channel="edge", series="noble"),
