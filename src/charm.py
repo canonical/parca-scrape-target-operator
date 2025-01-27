@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2022 Jon Seager.
+# Copyright 2025 Canonical
 # See LICENSE file for licensing details.
 
 """Parca Scrape Target Charm."""
