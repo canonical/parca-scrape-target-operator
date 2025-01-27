@@ -10,7 +10,7 @@ from ops.testing import Context
 from charm import ParcaScrapeTargetCharm
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def context():
     return Context(charm_type=ParcaScrapeTargetCharm)
 
