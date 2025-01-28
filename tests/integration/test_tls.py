@@ -74,7 +74,10 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
 @mark.abort_on_fail
 async def test_integrate_scrape_target(ops_test: OpsTest):
     await ops_test.model.relate(PARCA_TARGET, PARCA)
-    await ops_test.model.wait_for_idle(apps=[PARCA_TARGET, PARCA], status="active", timeout=500)
+    await asyncio.gather(
+        ops_test.model.wait_for_idle(apps=[PARCA], status="active", timeout=500),
+        ops_test.model.wait_for_idle(apps=[PARCA_TARGET], status="blocked", timeout=500),
+    )
 
 
 async def test_profiling_is_not_configured(ops_test: OpsTest):
