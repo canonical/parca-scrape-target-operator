@@ -164,8 +164,7 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def _is_tls_ca_valid(self) -> bool:
         if ca_cert := self._tls_ca_cert:
             try:
-                # try to convert the cert to another format
-                # an exception wll be raised if ssl fails to do so due to a formatting error
+                # An exception will be raised if the certificate string is improperly formatted.
                 ssl.PEM_cert_to_DER_cert(ca_cert)
                 return True
             except ValueError as e:
@@ -180,11 +179,9 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         if not self._targets:
             event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
         if not self._is_scheme_valid():
-            event.add_status(ops.BlockedStatus("Invalid value provided for `scheme` config."))
+            event.add_status(ops.BlockedStatus("Invalid `scheme` provided."))
         if not self._is_tls_ca_valid():
-            event.add_status(
-                ops.BlockedStatus("Invalid certificate provided for `tls_ca_cert` config.")
-            )
+            event.add_status(ops.BlockedStatus("Invalid certificate provided for `tls_ca_cert`."))
         event.add_status(ops.ActiveStatus())
 
 
