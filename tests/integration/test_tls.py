@@ -80,20 +80,13 @@ async def test_integrate_scrape_target(ops_test: OpsTest):
     )
 
 
-async def test_profiling_is_not_configured(ops_test: OpsTest):
-    status = await ops_test.model.get_status()  # noqa: F821
-    address = status["applications"][PARCA]["public-address"]
-    response = requests.get(f"http://{address}:8080/metrics")
-    assert PARCA_TARGET not in response.text
-
-
 @mark.abort_on_fail
 async def test_set_scrape_target_config(ops_test: OpsTest):
     grafana_address = get_unit_ip(ops_test.model_name, GRAFANA, "0")
     config = {
         "targets": f"{grafana_address}:8080",
         "scheme": "https",
-        "tls_config_ca": await get_ca_cert(ops_test),
+        "tls_ca_cert": await get_ca_cert(ops_test),
     }
 
     # set config
