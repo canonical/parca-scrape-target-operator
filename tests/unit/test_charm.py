@@ -5,10 +5,12 @@ import json
 from dataclasses import replace
 
 import pytest
+from charms.parca_k8s.v0.parca_scrape import DEFAULT_JOB
 from ops.model import ActiveStatus, BlockedStatus
 from ops.testing import Relation, State
 
-DEFAULT_JOB = {"static_configs": [{"targets": ["foo:1234"]}]}
+TEST_JOB = {"static_configs": [{"targets": ["foo:1234"]}]}
+TEST_CA = "-----BEGIN CERTIFICATE-----\n-----END CERTIFICATE-----"
 
 
 @pytest.fixture
@@ -18,18 +20,18 @@ def base_state():
 
 def test_charm_blocks_if_no_targets_specified(context, base_state):
     state_out = context.run(context.on.config_changed(), base_state)
-    assert state_out.unit_status == BlockedStatus("No targets specified, or targets invalid")
+    assert state_out.unit_status == BlockedStatus("No targets specified, or targets invalid.")
 
 
 @pytest.mark.parametrize(
     ("config", "expected"),
     (
-        ({"targets": "foo:1234"}, [DEFAULT_JOB]),
+        ({"targets": "foo:1234"}, [TEST_JOB]),
         (
             {"targets": "foo:1234", "scheme": "https"},
             [
                 {
-                    **DEFAULT_JOB,
+                    **TEST_JOB,
                     **{
                         "scheme": "https",
                         "tls_config": {"insecure_skip_verify": False},
@@ -38,17 +40,17 @@ def test_charm_blocks_if_no_targets_specified(context, base_state):
             ],
         ),
         (
-            {"targets": "foo:1234", "tls_config_ca": "ca"},
-            [DEFAULT_JOB],
+            {"targets": "foo:1234", "tls_ca_cert": TEST_CA},
+            [TEST_JOB],
         ),
         (
-            {"targets": "foo:1234", "tls_config_ca": "ca", "scheme": "https"},
+            {"targets": "foo:1234", "tls_ca_cert": TEST_CA, "scheme": "https"},
             [
                 {
-                    **DEFAULT_JOB,
+                    **TEST_JOB,
                     **{
                         "scheme": "https",
-                        "tls_config": {"insecure_skip_verify": False, "ca": "ca"},
+                        "tls_config": {"insecure_skip_verify": False, "ca": TEST_CA},
                     },
                 }
             ],
@@ -82,18 +84,48 @@ def test_non_leader_does_not_modify_relation_data(context, base_state):
     "target",
     ("https://foo:1234", "foo:1234/ahah", "foo:123456789,bar:5678"),
 )
-def test_charm_blocks_if_target_invalid(target, context, base_state):
+def test_charm_blocks_if_target_invalid(target, context, base_state, mock_topology):
     relation = Relation("profiling-endpoint")
     state_out = context.run(
         context.on.relation_changed(relation),
         replace(base_state, config={"targets": target}, relations={relation}),
     )
     rel_out = state_out.get_relation(relation.id)
-    assert rel_out.local_app_data == {"scrape_jobs": "", "scrape_metadata": ""}
+    assert rel_out.local_app_data == {
+        "scrape_jobs": json.dumps([DEFAULT_JOB]),
+        "scrape_metadata": json.dumps(mock_topology),
+    }
     assert state_out.unit_status.name == "blocked"
 
 
-def test_charm_removes_job_when_empty_targets_are_specified(context, base_state):
+@pytest.mark.parametrize(
+    "scheme",
+    ("httpz"),
+)
+def test_charm_blocks_if_scheme_invalid(scheme, context, base_state):
+    relation = Relation("profiling-endpoint")
+    state_out = context.run(
+        context.on.relation_changed(relation),
+        replace(
+            base_state, config={"targets": "foo:1234", "scheme": scheme}, relations={relation}
+        ),
+    )
+    assert state_out.unit_status.name == "blocked"
+
+
+@pytest.mark.parametrize("ca", ("test", "-----END CERTIFICATE-----"))
+def test_charm_blocks_if_ca_invalid(ca, context, base_state):
+    relation = Relation("profiling-endpoint")
+    state_out = context.run(
+        context.on.relation_changed(relation),
+        replace(
+            base_state, config={"targets": "foo:1234", "tls_ca_cert": ca}, relations={relation}
+        ),
+    )
+    assert state_out.unit_status.name == "blocked"
+
+
+def test_charm_removes_job_when_empty_targets_are_specified(context, base_state, mock_topology):
     relation = Relation("profiling-endpoint")
     state_inter = context.run(
         context.on.relation_changed(relation),
@@ -110,5 +142,8 @@ def test_charm_removes_job_when_empty_targets_are_specified(context, base_state)
         context.on.config_changed(),
         replace(state_inter, config={"targets": ""}),
     )
-    assert rel_out.local_app_data == {"scrape_jobs": "", "scrape_metadata": ""}
+    assert rel_out.local_app_data == {
+        "scrape_jobs": json.dumps([DEFAULT_JOB]),
+        "scrape_metadata": json.dumps(mock_topology),
+    }
     assert state_out.unit_status.name == "blocked"

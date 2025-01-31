@@ -4,17 +4,25 @@
 
 """Parca Scrape Target Charm."""
 
-import json
 import logging
-from typing import Any, Dict, List, Literal, Optional, TypedDict, Union
+import ssl
+from typing import Dict, List, Literal, Optional, TypedDict
 from urllib.parse import urlparse
 
 import ops
-from cosl import JujuTopology
+from charms.parca_k8s.v0.parca_scrape import ProfilingEndpointProvider
 
 logger = logging.getLogger(__name__)
 
 ScrapeJob = Dict[str, List[str]]
+
+
+class TLSConfig(TypedDict, total=False):
+    """TLS config type."""
+
+    insecure_skip_verify: bool
+    ca: str
+    server_name: str
 
 
 class ScrapeJobsConfig(TypedDict, total=False):
@@ -22,7 +30,7 @@ class ScrapeJobsConfig(TypedDict, total=False):
 
     static_configs: List[ScrapeJob]
     scheme: Optional[Literal["https", "http"]]
-    tls_config: Dict[str, Union[str, bool]]
+    tls_config: TLSConfig
 
 
 class ParcaScrapeTargetCharm(ops.CharmBase):
@@ -31,33 +39,24 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
+        # ENDPOINT WRAPPERS
+        self._profiling = ProfilingEndpointProvider(self, jobs=self._scrape_jobs)
+
         # event handlers
         self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
 
+        # unconditional logic
         self._reconcile()
 
     # RECONCILERS
     def _reconcile(self):
-        """Unconditional logic that can run on any event."""
-        if not self.unit.is_leader():
-            return
+        """Unconditional logic to run regardless of the event we're processing."""
         self._reconcile_relations()
 
     def _reconcile_relations(self):
-        """Update relation data with scrape jobs."""
-        scrape_meta = json.dumps(self._scrape_meta) if self._scrape_meta else ""
-        scrape_jobs = json.dumps(self._scrape_jobs) if self._scrape_jobs else ""
-
-        for relation in self.model.relations["profiling-endpoint"]:
-            relation.data[self.app]["scrape_metadata"] = scrape_meta
-            relation.data[self.app]["scrape_jobs"] = scrape_jobs
+        self._profiling.set_scrape_job_spec()
 
     # SCRAPE JOB PROPERTIES
-    @property
-    def _scrape_meta(self) -> Optional[Dict[str, str]]:
-        """Set up Parca scrape meta for external targets."""
-        return JujuTopology.from_charm(self).as_dict() if self._scrape_jobs else None
-
     @property
     def _scrape_jobs(self) -> Optional[List[ScrapeJobsConfig]]:
         """Set up Parca scrape configuration for external targets."""
@@ -76,16 +75,14 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
 
     # CONFIG PROPERTIES
     @property
-    def _tls_config(self) -> Dict[str, Any]:
+    def _tls_config(self) -> TLSConfig:
         """Get the TLS configuration from the Juju model config."""
-        tls_config = {
-            "insecure_skip_verify": self.model.config.get(
-                "tls_config_insecure_skip_verify", False
-            ),
+        tls_config: TLSConfig = {
+            "insecure_skip_verify": self._tls_insecure_skip_verify,
         }
-        if ca := self.model.config.get("tls_config_ca", ""):
+        if ca := self._tls_ca_cert:
             tls_config["ca"] = ca
-        if server_name := self.model.config.get("tls_config_server_name", ""):
+        if server_name := self._tls_server_name:
             tls_config["server_name"] = server_name
 
         return tls_config
@@ -94,6 +91,21 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def _scheme(self) -> str:
         """Get scheme option from config data."""
         return str(self.model.config.get("scheme", "http"))
+
+    @property
+    def _tls_ca_cert(self) -> str:
+        """Get tls_ca_cert option from config data."""
+        return str(self.model.config.get("tls_ca_cert", ""))
+
+    @property
+    def _tls_server_name(self) -> str:
+        """Get tls_server_name option from config data."""
+        return str(self.model.config.get("tls_server_name", ""))
+
+    @property
+    def _tls_insecure_skip_verify(self) -> bool:
+        """Get tls_insecure_skip_verify option from config data."""
+        return bool(self.model.config.get("tls_insecure_skip_verify", False))
 
     @property
     def _targets(self) -> list:
@@ -118,6 +130,7 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
             return []
         return targets
 
+    # CONFIG VALIDATIONS
     def _validated_address(self, address: str) -> str:
         """Validate address using urllib.parse.urlparse.
 
@@ -145,11 +158,33 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
 
         return target
 
+    def _is_scheme_valid(self) -> bool:
+        return self._scheme in ("http", "https")
+
+    def _is_tls_ca_valid(self) -> bool:
+        if ca_cert := self._tls_ca_cert:
+            try:
+                # try to convert the cert to another format
+                # an exception wll be raised if ssl fails to do so due to a formatting error
+                ssl.PEM_cert_to_DER_cert(ca_cert)
+                return True
+            except ValueError as e:
+                logger.error("Invalid CA cert provided %s", str(e))
+                return False
+
+        return True
+
     # EVENT HANDLERS
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Set unit status depending on the state."""
         if not self._targets:
-            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid"))
+            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
+        if not self._is_scheme_valid():
+            event.add_status(ops.BlockedStatus("Invalid value provided for `scheme` config."))
+        if not self._is_tls_ca_valid():
+            event.add_status(
+                ops.BlockedStatus("Invalid certificate provided for `tls_ca_cert` config.")
+            )
         event.add_status(ops.ActiveStatus())
 
 
