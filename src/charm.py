@@ -1,17 +1,36 @@
 #!/usr/bin/env python3
-# Copyright 2022 Jon Seager.
+# Copyright 2025 Canonical
 # See LICENSE file for licensing details.
 
 """Parca Scrape Target Charm."""
 
-import json
 import logging
+import ssl
+from typing import Dict, List, Literal, Optional, TypedDict
 from urllib.parse import urlparse
 
 import ops
-from charms.observability_libs.v0.juju_topology import JujuTopology
+from charms.parca_k8s.v0.parca_scrape import ProfilingEndpointProvider
 
 logger = logging.getLogger(__name__)
+
+ScrapeJob = Dict[str, List[str]]
+
+
+class TLSConfig(TypedDict, total=False):
+    """TLS config type."""
+
+    insecure_skip_verify: bool
+    ca: str
+    server_name: str
+
+
+class ScrapeJobsConfig(TypedDict, total=False):
+    """Scrape job config type."""
+
+    static_configs: List[ScrapeJob]
+    scheme: Optional[Literal["https", "http"]]
+    tls_config: TLSConfig
 
 
 class ParcaScrapeTargetCharm(ops.CharmBase):
@@ -20,34 +39,73 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def __init__(self, *args):
         super().__init__(*args)
 
-        if not self.unit.is_leader():
-            return
+        # ENDPOINT WRAPPERS
+        self._profiling = ProfilingEndpointProvider(self, jobs=self._scrape_jobs)
 
-        self.framework.observe(self.on.config_changed, self._update)
-        self.framework.observe(self.on.profiling_endpoint_relation_changed, self._update)
-        self.framework.observe(self.on.profiling_endpoint_relation_joined, self._update)
+        # event handlers
+        self.framework.observe(self.on.collect_unit_status, self._on_collect_unit_status)
 
-    def _update(self, _):
-        """Update relation data with scrape jobs."""
-        if not (jobs := self._get_scrape_jobs):
-            scrape_meta = scrape_jobs = ""
-            self.unit.status = ops.BlockedStatus("No targets specified, or targets invalid")
-        else:
-            scrape_meta = json.dumps(JujuTopology.from_charm(self).as_dict())
-            scrape_jobs = json.dumps(jobs)
-            self.unit.status = ops.ActiveStatus()
+        # unconditional logic
+        self._reconcile()
 
-        for relation in self.model.relations["profiling-endpoint"]:
-            relation.data[self.app]["scrape_metadata"] = scrape_meta
-            relation.data[self.app]["scrape_jobs"] = scrape_jobs
+    # RECONCILERS
+    def _reconcile(self):
+        """Unconditional logic to run regardless of the event we're processing."""
+        self._reconcile_relations()
+
+    def _reconcile_relations(self):
+        self._profiling.set_scrape_job_spec()
+
+    # SCRAPE JOB PROPERTIES
+    @property
+    def _scrape_jobs(self) -> Optional[List[ScrapeJobsConfig]]:
+        """Set up Parca scrape configuration for external targets."""
+        # return None if no targets are configured
+        if not self._targets:
+            return None
+
+        job: ScrapeJobsConfig = {
+            "static_configs": [{"targets": self._targets}],
+        }
+        if self._scheme == "https":
+            job["scheme"] = "https"
+            job["tls_config"] = self._tls_config
+
+        return [job]
+
+    # CONFIG PROPERTIES
+    @property
+    def _tls_config(self) -> TLSConfig:
+        """Get the TLS configuration from the Juju model config."""
+        tls_config: TLSConfig = {
+            "insecure_skip_verify": self._tls_insecure_skip_verify,
+        }
+        if ca := self._tls_ca_cert:
+            tls_config["ca"] = ca
+        if server_name := self._tls_server_name:
+            tls_config["server_name"] = server_name
+
+        return tls_config
 
     @property
-    def _get_scrape_jobs(self) -> list:
-        """Set up Parca scrape configuration for external targets."""
-        if targets := self._targets:
-            return [{"static_configs": [{"targets": targets}]}]
-        else:
-            return []
+    def _scheme(self) -> str:
+        """Get scheme option from config data."""
+        return str(self.model.config.get("scheme", "http"))
+
+    @property
+    def _tls_ca_cert(self) -> str:
+        """Get tls_ca_cert option from config data."""
+        return str(self.model.config.get("tls_ca_cert", ""))
+
+    @property
+    def _tls_server_name(self) -> str:
+        """Get tls_server_name option from config data."""
+        return str(self.model.config.get("tls_server_name", ""))
+
+    @property
+    def _tls_insecure_skip_verify(self) -> bool:
+        """Get tls_insecure_skip_verify option from config data."""
+        return bool(self.model.config.get("tls_insecure_skip_verify", False))
 
     @property
     def _targets(self) -> list:
@@ -72,6 +130,7 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
             return []
         return targets
 
+    # CONFIG VALIDATIONS
     def _validated_address(self, address: str) -> str:
         """Validate address using urllib.parse.urlparse.
 
@@ -98,6 +157,33 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
             return ""
 
         return target
+
+    def _is_scheme_valid(self) -> bool:
+        return self._scheme in ("http", "https")
+
+    def _is_tls_ca_valid(self) -> bool:
+        if ca_cert := self._tls_ca_cert:
+            try:
+                # An exception will be raised if the certificate string is improperly formatted.
+                ssl.PEM_cert_to_DER_cert(ca_cert)
+            except ValueError as e:
+                logger.error("Invalid CA cert provided %s", str(e))
+                return False
+
+        return True
+
+    # EVENT HANDLERS
+    def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
+        """Set unit status depending on the state."""
+        if not self._targets:
+            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
+        # TODO: use a pydantic config object
+        # https://github.com/canonical/parca-scrape-target-operator/issues/66
+        if not self._is_scheme_valid():
+            event.add_status(ops.BlockedStatus("Invalid `scheme` provided."))
+        if not self._is_tls_ca_valid():
+            event.add_status(ops.BlockedStatus("Invalid certificate provided for `tls_ca_cert`."))
+        event.add_status(ops.ActiveStatus())
 
 
 if __name__ == "__main__":
