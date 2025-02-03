@@ -166,7 +166,6 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
             try:
                 # An exception will be raised if the certificate string is improperly formatted.
                 ssl.PEM_cert_to_DER_cert(ca_cert)
-                return True
             except ValueError as e:
                 logger.error("Invalid CA cert provided %s", str(e))
                 return False
@@ -178,6 +177,8 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         """Set unit status depending on the state."""
         if not self._targets:
             event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
+        # TODO: use a pydantic config object
+        # https://github.com/canonical/parca-scrape-target-operator/issues/66
         if not self._is_scheme_valid():
             event.add_status(ops.BlockedStatus("Invalid `scheme` provided."))
         if not self._is_tls_ca_valid():
