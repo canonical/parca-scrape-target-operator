@@ -9,8 +9,14 @@ description: |
   The Parca scrape target operator allows profiling endpoints outside the
   Juju model to be profiled by the Parca Kubernetes charms.
 
-
 type: charm
+
+links:
+  documentation: https://discourse.charmhub.io/t/16555
+  website: https://charmhub.io/parca-scrape-target
+  source: https://github.com/canonical/parca-scrape-target-operator
+  issues: https://github.com/canonical/parca-scrape-target-operator/issues
+
 bases:
   - build-on:
       - name: "ubuntu"
