@@ -11,7 +11,7 @@
 This documents explains the processes and practices recommended for contributing enhancements to this operator.
 
 - Generally, before developing enhancements to this charm, you should consider [opening an issue](https://github.com/canonical/parca-scrape-target-operator/issues) explaining your use case.
-- If you would like to chat with us about your use-cases or proposed implementation, you can reach us at [Canonical Mattermost public channel](https://chat.charmhub.io/charmhub/channels/charm-dev) or [Discourse](https://discourse.charmhub.io/).
+- If you would like to chat with us about your use-cases or proposed implementation, you can reach us at [Canonical Observability Stack Matrix public channel](https://matrix.to/#/#cos:ubuntu.com) or [Discourse](https://discourse.charmhub.io/).
 - Familiarising yourself with the [Charmed Operator Framework](https://juju.is/docs/sdk) library will help you a lot when working on new features or bug fixes.
 - All enhancements require review before being merged. Code review typically examines:
   - code quality
@@ -82,5 +82,5 @@ charmcraft pack
 juju add-model parca-dev
 # Enable DEBUG logging
 juju model-config logging-config="<root>=INFO;unit=DEBUG"
-juju deploy ./parca-scrape-target_ubuntu@22.04-amd64.charm parca-scrape-target
+juju deploy ./parca-scrape-target_ubuntu-22.04-amd64.charm parca-scrape-target
 ```
