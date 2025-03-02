@@ -1,4 +1,4 @@
 # Copyright 2022 Jon Seager
 # See LICENSE file for licensing details.
-ops==2.17.1
+ops==2.19.0
 cosl>=0.0.51
