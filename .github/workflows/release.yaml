@@ -7,5 +7,5 @@ on:
 
 jobs:
   release:
-    uses: canonical/observability/.github/workflows/charm-release.yaml@v0
+    uses: canonical/observability/.github/workflows/charm-release.yaml@b4142eef3bd03c31b90bec28a3ef16056610e181 # v0
     secrets: inherit
