@@ -6,7 +6,8 @@
 
 import logging
 import ssl
-from typing import Dict, List, Literal, Optional, TypedDict
+from itertools import filterfalse
+from typing import Dict, List, Literal, Optional, TypedDict, cast
 from urllib.parse import urlparse
 
 import ops
@@ -108,30 +109,26 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         return bool(self.model.config.get("tls_insecure_skip_verify", False))
 
     @property
-    def _targets(self) -> list:
+    def _raw_targets(self) -> List[str]:
         """Get a sanitised list of external scrape targets."""
-        if not (raw_targets := str(self.model.config.get("targets", ""))):
-            return []
+        raw_targets = cast(str, self.model.config.get("targets", ""))
 
-        targets = []
-        invalid_targets = []
+        # tolerate spaces after the commas
+        return [target.strip() for target in raw_targets.split(",")]
 
-        for config_target in raw_targets.split(","):
-            if valid_address := self._validated_address(config_target):
-                targets.append(valid_address)
-            else:
-                invalid_targets.append(config_target)
+    @property
+    def _targets(self) -> List[str]:
+        """Get a validated list of external scrape targets."""
+        return list(filter(self._validate_address, self._raw_targets))
 
-        if invalid_targets:
-            logger.error(
-                "Invalid targets found: %s. Targets must be specified in host:port format",
-                invalid_targets,
-            )
-            return []
-        return targets
+    @property
+    def _invalid_targets(self) -> list:
+        """All invalid scrape targets, for user feedback purposes."""
+        return list(filterfalse(self._validate_address, self._raw_targets))
 
     # CONFIG VALIDATIONS
-    def _validated_address(self, address: str) -> str:
+    @staticmethod
+    def _validate_address(address: str) -> str:
         """Validate address using urllib.parse.urlparse.
 
         Args:
@@ -176,7 +173,15 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Set unit status depending on the state."""
         if not self._targets:
-            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
+            event.add_status(ops.BlockedStatus("No targets."))
+        if invalid_targets := self._invalid_targets:
+            logger.error(
+                "Invalid targets found: %s. "
+                "Targets must be specified in host:port format, and comma-separated. "
+                "For example: `192.168.5.2:7000,192.168.5.3:7000`",
+                invalid_targets,
+            )
+            event.add_status(ops.BlockedStatus("Invalid targets found (see logs)."))
         # TODO: use a pydantic config object
         # https://github.com/canonical/parca-scrape-target-operator/issues/66
         if not self._is_scheme_valid():
