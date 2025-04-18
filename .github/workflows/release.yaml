@@ -1,4 +1,4 @@
-name: Release to latest/edge
+name: Release Charm
 
 on:
   push:
@@ -7,5 +7,5 @@ on:
 
 jobs:
   release:
-    uses: canonical/observability/.github/workflows/charm-release.yaml@v0
+    uses: canonical/observability/.github/workflows/charm-release.yaml@v1
     secrets: inherit
