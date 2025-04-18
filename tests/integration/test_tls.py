@@ -44,6 +44,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
             await charm_under_test,
             application_name=PARCA_TARGET,
         ),
+        # TODO this test will likely need adjustments once tracks are there
         ops_test.model.deploy(PARCA, channel="edge", series="noble"),
         ops_test.model.deploy(
             GRAFANA,
@@ -52,7 +53,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
         ),
         ops_test.model.deploy(
             SSC,
-            channel="edge",
+            channel="latest/edge",
             trust=True,
         ),
     )
