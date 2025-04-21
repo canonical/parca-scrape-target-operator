@@ -4,6 +4,13 @@ on:
   push:
     branches:
       - main
+      - track/**
+    paths-ignore:
+      - ".github/renovate*"
+      - ".github/workflows/release.yaml"
+      - ".github/workflows/renovate.yaml"
+      - ".github/workflows/update-libs.yaml"
+      - ".gitignore"
 
 jobs:
   release:
