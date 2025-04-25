@@ -44,6 +44,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
             await charm_under_test,
             application_name=PARCA_TARGET,
         ),
+        # TODO this test will likely need adjustments once tracks are there
         ops_test.model.deploy(PARCA, channel="edge", series="noble"),
         ops_test.model.deploy(
             GRAFANA,
@@ -52,7 +53,7 @@ async def test_deploy(ops_test: OpsTest, charm_under_test):
         ),
         ops_test.model.deploy(
             SSC,
-            channel="edge",
+            channel="latest/edge",
             trust=True,
         ),
     )
@@ -101,7 +102,7 @@ async def test_set_scrape_target_config(ops_test: OpsTest):
 async def test_profiling_is_configured(ops_test: OpsTest):
     status = await ops_test.model.get_status()  # noqa: F821
     address = status["applications"][PARCA]["public-address"]
-    response = requests.get(f"http://{address}:8080/metrics")
+    response = requests.get(f"http://{address}:7994/metrics")
     # the scrape job will contain the topology of parca-scrape-target not grafana
     assert PARCA_TARGET in response.text
 
