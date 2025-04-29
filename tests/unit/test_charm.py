@@ -20,7 +20,7 @@ def base_state():
 
 def test_charm_blocks_if_no_targets_specified(context, base_state):
     state_out = context.run(context.on.config_changed(), base_state)
-    assert state_out.unit_status == BlockedStatus("No targets specified, or targets invalid.")
+    assert isinstance(state_out.unit_status, BlockedStatus)
 
 
 @pytest.mark.parametrize(

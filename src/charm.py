@@ -33,6 +33,10 @@ class ScrapeJobsConfig(TypedDict, total=False):
     tls_config: TLSConfig
 
 
+class TargetValidationError(Exception):
+    """Raised if some external scrape target as provided by config is invalid."""
+
+
 class ParcaScrapeTargetCharm(ops.CharmBase):
     """Parca Scrape Target Charm."""
 
@@ -107,36 +111,48 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
         """Get tls_insecure_skip_verify option from config data."""
         return bool(self.model.config.get("tls_insecure_skip_verify", False))
 
-    @property
-    def _targets(self) -> list:
-        """Get a sanitised list of external scrape targets."""
+    def _load_and_validate_targets(self):
+        """Get a sanitised list of external scrape targets.
+
+        Raises TargetValidationError if any target is invalid.
+        """
         if not (raw_targets := str(self.model.config.get("targets", ""))):
             return []
 
         targets = []
-        invalid_targets = []
-
         for config_target in raw_targets.split(","):
             if valid_address := self._validated_address(config_target):
                 targets.append(valid_address)
             else:
-                invalid_targets.append(config_target)
-
-        if invalid_targets:
-            logger.error(
-                "Invalid targets found: %s. Targets must be specified in host:port format",
-                invalid_targets,
-            )
-            return []
+                logger.error(
+                    "Targets must be specified in host:port format, and be comma-separated. "
+                    "For example: targets='foo.com:1232, boo.org:4234'",
+                )
+                raise TargetValidationError(config_target)
         return targets
 
+    @property
+    def _targets(self) -> list:
+        """Get a sanitised list of external scrape targets."""
+        try:
+            return self._load_and_validate_targets()
+        except TargetValidationError:
+            logger.exception(
+                "Invalid targets found.",
+            )
+            return []
+
     # CONFIG VALIDATIONS
-    def _validated_address(self, address: str) -> str:
+    @staticmethod
+    def _validated_address(address: str) -> str:
         """Validate address using urllib.parse.urlparse.
 
         Args:
             address: must not include scheme.
         """
+        # allow spaces around the address
+        address = address.strip()
+
         # Add '//' prefix per RFC 1808, if not already there
         # This is needed by urlparse, https://docs.python.org/3/library/urllib.parse.html
         if not address.startswith("//"):
@@ -175,10 +191,22 @@ class ParcaScrapeTargetCharm(ops.CharmBase):
     # EVENT HANDLERS
     def _on_collect_unit_status(self, event: ops.CollectStatusEvent):
         """Set unit status depending on the state."""
-        if not self._targets:
-            event.add_status(ops.BlockedStatus("No targets specified, or targets invalid."))
-        # TODO: use a pydantic config object
-        # https://github.com/canonical/parca-scrape-target-operator/issues/66
+        no_targets = targets_invalid = None
+        try:
+            no_targets = not self._load_and_validate_targets()
+        except TargetValidationError:
+            targets_invalid = True
+
+        if no_targets:
+            event.add_status(
+                ops.BlockedStatus(
+                    f"No targets specified. "
+                    f"Please run: `juju config {self.app.name} "
+                    f"targets='<scrape target1>, <scrape target2>, ...'"
+                )
+            )
+        if targets_invalid:
+            event.add_status(ops.BlockedStatus("Targets config invalid. See logs for more."))
         if not self._is_scheme_valid():
             event.add_status(ops.BlockedStatus("Invalid `scheme` provided."))
         if not self._is_tls_ca_valid():
