@@ -20,7 +20,7 @@ def base_state():
 
 def test_charm_blocks_if_no_targets_specified(context, base_state):
     state_out = context.run(context.on.config_changed(), base_state)
-    assert state_out.unit_status == BlockedStatus("No targets specified, or targets invalid.")
+    assert state_out.unit_status == BlockedStatus("No targets.")
 
 
 @pytest.mark.parametrize(
@@ -82,7 +82,7 @@ def test_non_leader_does_not_modify_relation_data(context, base_state):
 
 @pytest.mark.parametrize(
     "target",
-    ("https://foo:1234", "foo:1234/ahah", "foo:123456789,bar:5678"),
+    ("https://foo:1234", "foo:1234/ahah", "foo:123456789"),
 )
 def test_charm_blocks_if_target_invalid(target, context, base_state, mock_topology):
     relation = Relation("profiling-endpoint")
@@ -93,6 +93,30 @@ def test_charm_blocks_if_target_invalid(target, context, base_state, mock_topolo
     rel_out = state_out.get_relation(relation.id)
     assert rel_out.local_app_data == {
         "scrape_jobs": json.dumps([DEFAULT_JOB]),
+        "scrape_metadata": json.dumps(mock_topology),
+    }
+    assert state_out.unit_status.name == "blocked"
+
+
+@pytest.mark.parametrize(
+    "target, valid",
+    (
+        ("foo:123, bar:xyz", [("foo", 123)]),
+        ("foo:123456789,foo:123", [("foo", 123)]),
+        ("foo:123;bar:3129, bar:123,foo:123", [("bar", 123), ("foo", 123)]),
+    ),
+)
+def test_some_target_invalid(target, valid, context, base_state, mock_topology):
+    relation = Relation("profiling-endpoint")
+    state_out = context.run(
+        context.on.relation_changed(relation),
+        replace(base_state, config={"targets": target}, relations={relation}),
+    )
+    rel_out = state_out.get_relation(relation.id)
+    valid_jobs = [{"static_configs": [{"targets": [f"{host}:{port}" for host, port in valid]}]}]
+
+    assert rel_out.local_app_data == {
+        "scrape_jobs": json.dumps(valid_jobs),
         "scrape_metadata": json.dumps(mock_topology),
     }
     assert state_out.unit_status.name == "blocked"
