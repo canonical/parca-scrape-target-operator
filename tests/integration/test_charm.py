@@ -4,7 +4,7 @@
 from pathlib import Path
 
 import requests
-from jubilant import Juju, all_active
+from jubilant import Juju, all_active, any_blocked
 from pytest import mark
 from tenacity import retry, stop_after_attempt
 from tenacity.wait import wait_exponential as wexp
@@ -13,7 +13,6 @@ PARCA_TARGET = "parca-scrape-target"
 PARCA = "parca"
 
 
-@mark.setup
 @mark.abort_on_fail
 def test_deploy(juju: Juju, scrape_target_charm: Path):
     # GIVEN an empty model
@@ -27,7 +26,11 @@ def test_deploy(juju: Juju, scrape_target_charm: Path):
     )
 
     # THEN parca-scrape-target becomes active
-    juju.wait(lambda status: all_active(status, PARCA_TARGET), timeout=1000)
+    juju.wait(
+        lambda status: all_active(status, PARCA_TARGET),
+        timeout=1000,
+        error=lambda status: any_blocked(status, PARCA_TARGET),
+    )
 
 
 @mark.abort_on_fail
@@ -40,7 +43,11 @@ def test_profiling_endpoint_relation(juju: Juju):
     juju.integrate(PARCA_TARGET, PARCA)
 
     # THEN everything is eventually active
-    juju.wait(lambda status: all_active(status, PARCA, PARCA_TARGET), timeout=1000)
+    juju.wait(
+        lambda status: all_active(status, PARCA, PARCA_TARGET),
+        timeout=1000,
+        error=lambda status: any_blocked(status, PARCA, PARCA_TARGET),
+    )
 
 
 @retry(wait=wexp(multiplier=2, min=1, max=30), stop=stop_after_attempt(10), reraise=True)
