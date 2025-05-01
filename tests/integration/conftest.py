@@ -23,7 +23,7 @@ def scrape_target_charm() -> Path:
         try:
             pth = pack_charm().charm.absolute()
         except subprocess.CalledProcessError:
-            logger.warning("Failed to build tempo-worker. Trying again!")
+            logger.warning("Failed to build the charm. Trying again!")
             continue
         os.environ["CHARM_PATH"] = str(pth)
         return pth
