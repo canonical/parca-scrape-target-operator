@@ -51,7 +51,7 @@ def test_profiling_is_configured(juju: Juju):
     address = juju.status().apps[PARCA].address
     response = requests.get(f"http://{address}:7994/metrics")
 
-    # THEN the scrape job will contain the topology of parca-scrape-target, not Grafana, in its response
+    # THEN the scrape job will contain the topology of parca-scrape-target in its response
     assert PARCA_TARGET in response.text
 
 
