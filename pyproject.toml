@@ -20,9 +20,10 @@ dev = [
   "ops[testing]",
   # Integration
   "macaroonbakery==1.3.4",
-  "pytest-operator==0.42.0",
   "tenacity==9.0.0",  # can't upgrade without bumping the python version too.
   "requests==2.32.3",
+  "jubilant",
+  "pytest-jubilant>=0.4.1",
 ]
 
 # Testing tools configuration
