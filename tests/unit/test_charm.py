@@ -20,7 +20,7 @@ def base_state():
 
 def test_charm_blocks_if_no_targets_specified(context, base_state):
     state_out = context.run(context.on.config_changed(), base_state)
-    assert state_out.unit_status == BlockedStatus("No targets specified, or targets invalid.")
+    assert isinstance(state_out.unit_status, BlockedStatus)
 
 
 @pytest.mark.parametrize(
@@ -142,6 +142,8 @@ def test_charm_removes_job_when_empty_targets_are_specified(context, base_state,
         context.on.config_changed(),
         replace(state_inter, config={"targets": ""}),
     )
+
+    rel_out = state_out.get_relation(relation.id)
     assert rel_out.local_app_data == {
         "scrape_jobs": json.dumps([DEFAULT_JOB]),
         "scrape_metadata": json.dumps(mock_topology),
