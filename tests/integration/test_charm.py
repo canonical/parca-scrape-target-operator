@@ -22,7 +22,6 @@ def test_deploy(juju: Juju, scrape_target_charm: Path):
         scrape_target_charm,
         PARCA_TARGET,
         config={"targets": "10.10.10.10:7070"},
-        base="ubuntu@22.04",
     )
 
     # THEN parca-scrape-target becomes active
