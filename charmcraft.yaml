@@ -20,6 +20,9 @@ links:
 platforms:
   ubuntu@24.04:amd64:
 
+assumes:
+  - juju >= 3.6
+  
 parts:
   charm:
     source: .
