@@ -21,7 +21,7 @@ dev = [
   # Integration
   "macaroonbakery==1.3.4",
   "tenacity==9.0.0",  # can't upgrade without bumping the python version too.
-  "requests==2.32.3",
+  "requests==2.32.4",
   "jubilant",
   "pytest-jubilant>=0.4.1",
 ]
