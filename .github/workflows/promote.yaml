@@ -14,7 +14,7 @@ on:
 jobs:
   promote:
     name: Promote
-    uses: canonical/observability/.github/workflows/charm-promote.yaml@5ac956bfb95ebfa4889749ee11c48c1d8a7cc37a # v1
+    uses: canonical/observability/.github/workflows/charm-promote.yaml@636230eacd68c9cb99a2e926126e2bf71a2f87c0 # v1
     with:
       promotion: ${{ github.event.inputs.promotion }}
     secrets: inherit
