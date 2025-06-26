@@ -11,7 +11,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   # Linting
-  "ruff==0.12.0",
+  "ruff==0.12.1",
   # Static
   "pyright",
   # Unit
