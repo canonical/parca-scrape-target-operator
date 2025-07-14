@@ -9,5 +9,5 @@ on:
 jobs:
   update-lib:
     name: Check libraries
-    uses: canonical/observability/.github/workflows/charm-update-libs.yaml@918c01954615d0e639e002e941f796f066223193 # v1
+    uses: canonical/observability/.github/workflows/charm-update-libs.yaml@d5dd87e269baf7e7a3a8c44e7d1441945cab1bfd # v1
     secrets: inherit

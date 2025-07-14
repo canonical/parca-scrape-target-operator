@@ -8,5 +8,5 @@ on:
 jobs:
     tics:
         name: TiCs
-        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@918c01954615d0e639e002e941f796f066223193 # v1
+        uses: canonical/observability/.github/workflows/charm-tiobe-scan.yaml@d5dd87e269baf7e7a3a8c44e7d1441945cab1bfd # v1
         secrets: inherit
