@@ -15,7 +15,7 @@ dev = [
   # Static
   "pyright",
   # Unit
-  "pytest==8.3.5",
+  "pytest==8.4.1",
   "coverage[toml]==6.5.0",
   "ops[testing]",
   # Integration
