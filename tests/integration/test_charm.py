@@ -61,7 +61,7 @@ def test_profiling_is_configured(juju: Juju):
     assert PARCA_TARGET in response.text
 
 
-@mark.teardown
+@mark.juju_teardown
 def test_teardown(juju: Juju):
     juju.remove_application(PARCA)
     juju.remove_application(PARCA_TARGET)

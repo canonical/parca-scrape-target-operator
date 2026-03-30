@@ -26,7 +26,7 @@ def get_unit_ip(juju: Juju, app_name, unit_id):
 
 
 @mark.abort_on_fail
-@mark.setup
+@mark.juju_setup
 def test_deploy(juju: Juju, scrape_target_charm):
     # GIVEN an empty model
 
@@ -86,6 +86,6 @@ def test_profiling_is_configured(juju: Juju):
     assert PARCA_TARGET in response.text
 
 
-@mark.teardown
+@mark.juju_teardown
 def test_remove_parca_target(juju: Juju):
     juju.remove_application(PARCA_TARGET)
