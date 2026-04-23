@@ -6,8 +6,29 @@ name: parca-scrape-target
 summary: An integrator charm for external profiling endpoints.
 
 description: |
-  The Parca scrape target operator allows profiling endpoints outside the
-  Juju model to be profiled by the Parca Kubernetes charms.
+  Parca Scrape Target is a workloadless Juju charm that acts as an integrator for
+  profiling endpoints that exist outside the Juju model. It is an optional complement
+  to the Canonical Observability Stack (COS):
+  https://documentation.ubuntu.com/observability
+
+  Parca is an open-source continuous profiling backend. The preferred way to integrate
+  an application with Parca is to relate it directly within the Juju model using the
+  parca_scrape interface. However, when the profiling target runs outside Juju — for
+  example, a pre-existing service on a bare-metal host or in another infrastructure —
+  this charm bridges the gap.
+
+  This charm carries no workload of its own. It is configured with one or more external
+  target addresses and exposes them to a Parca or parca-k8s charm via the
+  profiling-endpoint relation.
+
+  Key features:
+
+  - Workloadless integrator: no containers or services to manage.
+  - Bridges external (non-Juju) profiling endpoints into the Juju model via the
+    parca_scrape interface.
+  - Configurable list of scrape targets (host:port) via Juju config.
+  - Configurable scrape scheme (http/https) and TLS settings, including custom CA
+    certificate, server name override, and insecure skip verify.
 
 type: charm
 
@@ -22,7 +43,7 @@ platforms:
 
 assumes:
   - juju >= 3.6
-  
+
 parts:
   charm:
     source: .
