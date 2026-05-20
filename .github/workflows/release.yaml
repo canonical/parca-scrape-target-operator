@@ -12,6 +12,13 @@ on:
       - ".github/workflows/update-libs.yaml"
       - ".gitignore"
 
+permissions:
+  # Required for all workflows
+  security-events: write
+  # Only required for workflows in private repositories
+  actions: read
+  contents: read
+
 jobs:
   release:
     uses: canonical/observability/.github/workflows/charm-release.yaml@v2
