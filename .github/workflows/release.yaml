@@ -12,6 +12,14 @@ on:
       - ".github/workflows/update-libs.yaml"
       - ".gitignore"
 
+permissions:
+  # Required for CodeQL security scanning
+  security-events: write
+  # Required for private repositories
+  actions: read
+  # Write permission needed for the reusable workflow to push git tags
+  contents: write
+
 jobs:
   release:
     uses: canonical/observability/.github/workflows/charm-release.yaml@6911b97deaa06e45aa5ce30cd1d6c3f43e0c2283 # v1
