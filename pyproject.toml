@@ -23,7 +23,7 @@ dev = [
   "tenacity==9.0.0",  # can't upgrade without bumping the python version too.
   "requests==2.32.4",
   "jubilant",
-  "pytest-jubilant>=0.4.1",
+  "pytest-jubilant>=2,<3",
 ]
 
 # Testing tools configuration
