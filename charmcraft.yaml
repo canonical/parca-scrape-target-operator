@@ -40,6 +40,7 @@ links:
 
 platforms:
   ubuntu@24.04:amd64:
+  ubuntu@26.04:amd64:
 
 assumes:
   - juju >= 3.6
